@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* We don't need the .page animation styles, 
+   as React Router handles page mounting/unmounting. */
