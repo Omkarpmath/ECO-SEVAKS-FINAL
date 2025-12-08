@@ -135,6 +135,10 @@ const removeAttendee = (eventId, userId) => {
     );
 };
 
+const deleteEvent = async (eventId) => {
+    return await getDB().collection(COLLECTION).deleteOne({ _id: toObjectId(eventId) });
+};
+
 module.exports = {
     createEvent,
     findEventById,
@@ -143,5 +147,6 @@ module.exports = {
     findEventsByOrganizer,
     updateEventStatus,
     addAttendee,
-    removeAttendee
+    removeAttendee,
+    deleteEvent
 };

@@ -148,3 +148,12 @@ export const apiHandleApproval = async (eventId, isApproved) => {
     throw new Error(error.response?.data?.message || 'Failed to update event status');
   }
 };
+
+export const apiDeleteEvent = async (eventId) => {
+  try {
+    const response = await api.delete(`/events/${eventId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to delete event');
+  }
+};

@@ -9,7 +9,8 @@ const {
     findEventsByOrganizer,
     updateEventStatus,
     addAttendee,
-    removeAttendee
+    removeAttendee,
+    deleteEvent
 } = require('../collections/events');
 const {
     addCreatedEvent,
@@ -302,6 +303,34 @@ router.delete('/:id/leave', protect, async (req, res) => {
         await removeJoinedEvent(req.user._id, event._id);
 
         res.json({ message: 'Successfully left event' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   DELETE /api/events/:id
+// @desc    Delete an event (organizer or admin only)
+// @access  Private
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const event = await findEventById(req.params.id);
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // Check if user is the organizer or an admin
+        const isOrganizer = event.organizer.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isOrganizer && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to delete this event' });
+        }
+
+        await deleteEvent(req.params.id);
+
+        res.json({ message: 'Event deleted successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
