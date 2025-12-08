@@ -42,18 +42,18 @@ export default function Login() {
 
   const handleDemoLogin = async (role) => {
     const demoCredentials = {
-      user: 'aisha@example.com',
-      organizer: 'rohan@example.com',
-      admin: 'priya@example.com',
+      user: { email: 'aisha@example.com', password: 'password123' },
+      organizer: { email: 'rohan@example.com', password: 'password123' },
+      admin: { email: 'admin@ecosevaks.com', password: 'Admin@123' },
     };
 
-    const demoEmail = demoCredentials[role];
-    setEmail(demoEmail);
-    setPassword('password123');
+    const creds = demoCredentials[role];
+    setEmail(creds.email);
+    setPassword(creds.password);
     setIsLoading(true);
 
     try {
-      await login(demoEmail, 'password123');
+      await login(creds.email, creds.password);
     } finally {
       setIsLoading(false);
     }
@@ -191,7 +191,7 @@ export default function Login() {
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-3">
-            Demo password: password123
+            Click to auto-login with demo credentials
           </p>
         </div>
       </div>
