@@ -25,6 +25,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Trust proxy - Required for secure cookies behind Render's reverse proxy
+app.set('trust proxy', 1);
+
 // CORS middleware
 app.use(cors({
     origin: [
