@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { Mail, Lock, LogIn, Leaf, User, Shield, ArrowRight } from 'lucide-react';
+import { Mail, Lock, LogIn, Leaf, Shield, ArrowRight } from 'lucide-react';
 import Input from '../components/Input';
 import Button from '../components/Button';
 
@@ -42,8 +42,6 @@ export default function Login() {
 
   const handleDemoLogin = async (role) => {
     const demoCredentials = {
-      user: { email: 'aisha@example.com', password: 'password123' },
-      organizer: { email: 'rohan@example.com', password: 'password123' },
       admin: { email: 'admin@ecosevaks.com', password: 'Admin@123' },
     };
 
@@ -152,30 +150,12 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handleDemoLogin('user')}
-              disabled={isLoading}
-              className="
-                group flex items-center justify-center gap-2
-                px-4 py-3
-                bg-white hover:bg-primary-50
-                border-2 border-gray-200 hover:border-primary-300
-                rounded-xl
-                text-gray-700 font-medium
-                transition-all duration-300
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              <User className="w-4 h-4 text-primary-600" />
-              <span>User</span>
-            </button>
-
+          <div className="mt-6">
             <button
               onClick={() => handleDemoLogin('admin')}
               disabled={isLoading}
               className="
-                group flex items-center justify-center gap-2
+                w-full group flex items-center justify-center gap-2
                 px-4 py-3
                 bg-white hover:bg-primary-50
                 border-2 border-gray-200 hover:border-primary-300
@@ -186,12 +166,12 @@ export default function Login() {
               "
             >
               <Shield className="w-4 h-4 text-primary-600" />
-              <span>Admin</span>
+              <span>Login as Admin</span>
             </button>
           </div>
 
           <p className="text-center text-xs text-gray-400 mt-3">
-            Click to auto-login with demo credentials
+            Quick admin login (admin@ecosevaks.com)
           </p>
         </div>
       </div>

@@ -54,7 +54,9 @@ app.use(session({
         maxAge: 1000 * 60 * 60 * 24, // 1 day
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        // Don't set domain - let it default to the backend domain
+        // This allows the cookie to be sent with credentials: 'include'
     }
 }));
 
