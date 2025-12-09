@@ -95,7 +95,7 @@ router.post(
     [
         body('title').trim().notEmpty().withMessage('Title is required'),
         body('description').trim().notEmpty().withMessage('Description is required'),
-        body('date').isISO8601().withMessage('Valid date is required'),
+        body('date').isISO8601({ strict: false, strictSeparator: false }).withMessage('Valid date is required'),
         body('type').isIn(['virtual', 'in-person']).withMessage('Type must be virtual or in-person')
     ],
     async (req, res) => {
@@ -121,7 +121,7 @@ router.post(
                 location,
                 tags: parsedTags,
                 whatToBring,
-                maxVolunteers,
+                maxVolunteers: parseInt(maxVolunteers, 10) || 0,
                 organizer: req.user._id
             });
 

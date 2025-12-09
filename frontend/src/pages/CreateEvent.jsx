@@ -92,7 +92,9 @@ export default function CreateEvent() {
       toast.success('Event submitted for approval!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error('Failed to create event.');
+      console.error('Event creation error:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Failed to create event.');
     } finally {
       setIsSubmitting(false);
     }
