@@ -33,7 +33,7 @@ app.use(cors({
     origin: [
         'http://localhost:5173',
         'http://localhost:3000',
-        'https://eco-sevaks-frontend.onrender.com',
+        'https://ecosevaks-frontend.onrender.com',
         process.env.FRONTEND_URL
     ].filter(Boolean), // Removes undefined values
     credentials: true
