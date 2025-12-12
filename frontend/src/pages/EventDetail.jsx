@@ -393,17 +393,17 @@ export default function EventDetail() {
                   {volunteers.map((volunteer) => (
                     <div
                       key={volunteer._id}
-                      className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <User className="w-5 h-5 text-primary-600" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="font-semibold text-gray-900 truncate">{volunteer.name}</p>
                           <p className="text-sm text-gray-500 flex items-center gap-1 truncate">
-                            <Mail className="w-3 h-3" />
-                            {volunteer.email}
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{volunteer.email}</span>
                           </p>
                         </div>
                       </div>
@@ -412,7 +412,7 @@ export default function EventDetail() {
                         size="sm"
                         onClick={() => handleRemoveVolunteer(volunteer._id, volunteer.name)}
                         leftIcon={<UserX className="w-4 h-4" />}
-                        className="flex-shrink-0"
+                        className="w-full sm:w-auto flex-shrink-0"
                       >
                         Remove
                       </Button>

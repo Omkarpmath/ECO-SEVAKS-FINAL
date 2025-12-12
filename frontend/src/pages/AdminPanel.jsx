@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import * as api from '../data/api';
 import toast from 'react-hot-toast';
 import {
@@ -21,10 +22,14 @@ import {
   Calendar,
   MapPin,
   User,
+  Users,
   Eye,
   X,
   AlertTriangle,
-  Inbox
+  Inbox,
+  FileText,
+  Clipboard,
+  Tag
 } from 'lucide-react';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
@@ -58,118 +63,207 @@ const StatCard = ({ icon: Icon, value, label, color = 'primary' }) => {
 };
 
 // ============================================
-// EVENT PREVIEW MODAL
+// EVENT PREVIEW MODAL (Premium Redesign)
 // ============================================
 const EventPreviewModal = ({ event, onClose, onApprove, onReject, isProcessing }) => {
   if (!event) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in">
+      {/* Backdrop with blur */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70 backdrop-blur-md"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-gray-900">Event Preview</h3>
+      {/* Modal Container */}
+      <div className="relative bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col animate-scale-in overflow-hidden">
+
+        {/* Hero Banner Section */}
+        <div className="relative h-64 flex-shrink-0">
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = `https://placehold.co/900x400/059669/white?text=${encodeURIComponent(event.title)}`;
+              e.target.onerror = null;
+            }}
+          />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+
+          {/* Close button */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="absolute top-4 right-4 p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-full transition-all duration-300 group"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-white group-hover:rotate-90 transition-transform duration-300" />
           </button>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Event Image */}
-          <div className="h-48 rounded-xl overflow-hidden">
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.src = `https://placehold.co/600x300/059669/white?text=${encodeURIComponent(event.title)}`;
-                e.target.onerror = null;
-              }}
-            />
+          {/* Event Type Badge */}
+          <div className="absolute top-4 left-4">
+            <Badge
+              variant={event.type === 'virtual' ? 'accent' : 'primary'}
+              glow
+              className="backdrop-blur-xl bg-white/10"
+            >
+              {event.type === 'virtual' ? '🌐 Virtual Event' : '📍 In-Person Event'}
+            </Badge>
           </div>
 
-          {/* Title & Organizer */}
-          <div>
-            <h4 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h4>
-            <div className="flex items-center gap-2 text-gray-600">
+          {/* Title & Organizer - Overlaid on banner */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">
+              {event.title}
+            </h2>
+            <div className="flex items-center gap-2 text-white/90">
               <User className="w-4 h-4" />
-              <span>Organized by {event.organizerName}</span>
+              <span className="font-medium">Organized by {event.organizerName}</span>
             </div>
           </div>
-
-          {/* Event Details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-primary-600" />
-              <div>
-                <p className="text-xs text-gray-500">Date</p>
-                <p className="font-medium text-gray-900">
-                  {new Date(event.date).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <MapPin className="w-5 h-5 text-primary-600" />
-              <div>
-                <p className="text-xs text-gray-500">Location</p>
-                <p className="font-medium text-gray-900">
-                  {event.type === 'virtual' ? 'Virtual' : event.location}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <h5 className="font-semibold text-gray-900 mb-2">Description</h5>
-            <p className="text-gray-600">{event.description}</p>
-          </div>
-
-          {/* Tags */}
-          {event.tags && event.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {event.tags.map(tag => (
-                <Badge key={tag} variant="primary" size="sm">{tag}</Badge>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 p-6 flex gap-3">
-          <Button
-            variant="danger"
-            fullWidth
-            onClick={() => onReject(event.id)}
-            loading={isProcessing}
-            leftIcon={<XCircle className="w-5 h-5" />}
-          >
-            Reject
-          </Button>
-          <Button
-            variant="success"
-            fullWidth
-            onClick={() => onApprove(event.id)}
-            loading={isProcessing}
-            leftIcon={<CheckCircle className="w-5 h-5" />}
-          >
-            Approve
-          </Button>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6 md:p-8 space-y-6">
+
+            {/* Event Info Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Date */}
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100/50 rounded-2xl p-4 border border-primary-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-5 h-5 text-primary-600" />
+                  <span className="text-xs font-semibold text-primary-700 uppercase tracking-wide">Date</span>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {new Date(event.date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+
+              {/* Time */}
+              <div className="bg-gradient-to-br from-accent-50 to-accent-100/50 rounded-2xl p-4 border border-accent-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-5 h-5 text-accent-600" />
+                  <span className="text-xs font-semibold text-accent-700 uppercase tracking-wide">Time</span>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {new Date(event.date).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+
+              {/* Location */}
+              <div className="bg-gradient-to-br from-secondary-50 to-secondary-100/50 rounded-2xl p-4 border border-secondary-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="w-5 h-5 text-secondary-600" />
+                  <span className="text-xs font-semibold text-secondary-700 uppercase tracking-wide">Location</span>
+                </div>
+                <p className="font-bold text-gray-900 truncate">
+                  {event.type === 'virtual' ? 'Online' : event.location || 'TBD'}
+                </p>
+              </div>
+
+              {/* Max Volunteers */}
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl p-4 border border-emerald-200/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-5 h-5 text-emerald-600" />
+                  <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Volunteers</span>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {event.maxVolunteers > 0 ? `Max ${event.maxVolunteers}` : 'Unlimited'}
+                </p>
+              </div>
+            </div>
+
+            {/* Description Section */}
+            <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-primary-200 transition-colors">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <FileText className="w-5 h-5 text-primary-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Description</h3>
+              </div>
+              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                {event.description}
+              </p>
+            </div>
+
+            {/* What to Bring Section */}
+            {event.whatToBring && (
+              <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 hover:border-accent-200 transition-colors">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-accent-100 rounded-lg">
+                    <Clipboard className="w-5 h-5 text-accent-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">What to Bring</h3>
+                </div>
+                <p className="text-gray-700 leading-relaxed">
+                  {event.whatToBring}
+                </p>
+              </div>
+            )}
+
+            {/* Tags Section */}
+            {event.tags && event.tags.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-2 bg-secondary-100 rounded-lg">
+                    <Tag className="w-5 h-5 text-secondary-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Tags</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {event.tags.map(tag => (
+                    <Badge key={tag} variant="primary" size="md">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sticky Footer with Action Buttons */}
+        <div className="flex-shrink-0 bg-gray-50 border-t-2 border-gray-100 p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              onClick={() => onReject(event.id)}
+              loading={isProcessing}
+              leftIcon={<XCircle className="w-5 h-5" />}
+              className="border-2 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+            >
+              Reject Event
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={() => onApprove(event.id)}
+              loading={isProcessing}
+              leftIcon={<CheckCircle className="w-5 h-5" />}
+              className="shadow-lg shadow-primary-500/30"
+            >
+              Approve Event
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 // ============================================
