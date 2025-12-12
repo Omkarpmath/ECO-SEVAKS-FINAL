@@ -29,7 +29,9 @@ import {
   Tag,
   Clipboard,
   Globe,
-  User
+  User,
+  UserX,
+  Mail
 } from 'lucide-react';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
@@ -38,23 +40,52 @@ import LoadingSpinner from '../components/LoadingSpinner';
 export default function EventDetail() {
   const { eventId } = useParams();
   const [event, setEvent] = useState(null);
+  const [volunteers, setVolunteers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingVolunteers, setIsLoadingVolunteers] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  const fetchEvent = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedEvent = await api.apiGetEventById(eventId);
+      setEvent(fetchedEvent);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchVolunteers = async () => {
+    if (!currentUser || !event) return;
+
+    // Only fetch volunteers if current user is the organizer
+    if (event.organizer !== currentUser.id && currentUser.id !== event.organizer) return;
+
+    setIsLoadingVolunteers(true);
+    try {
+      const volunteersList = await api.apiGetEventVolunteers(eventId);
+      console.log('EventDetail: Volunteers fetched:', volunteersList);
+      setVolunteers(volunteersList || []);
+    } catch (error) {
+      console.error('EventDetail: Error fetching volunteers:', error);
+      setVolunteers([]);
+    } finally {
+      setIsLoadingVolunteers(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEvent = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedEvent = await api.apiGetEventById(eventId);
-        setEvent(fetchedEvent);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchEvent();
   }, [eventId]);
+
+  // Fetch volunteers when event loads and user is the organizer
+  useEffect(() => {
+    if (event && currentUser && event.organizer === currentUser.id) {
+      fetchVolunteers();
+    }
+  }, [event?.id, currentUser?.id]);
 
   const handleJoinEvent = async () => {
     if (!currentUser) {
@@ -90,6 +121,22 @@ export default function EventDetail() {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link copied to clipboard!');
+    }
+  };
+
+  const handleRemoveVolunteer = async (volunteerId, volunteerName) => {
+    if (!confirm(`Are you sure you want to remove ${volunteerName} from this event?`)) {
+      return;
+    }
+
+    try {
+      await api.apiRemoveVolunteer(eventId, volunteerId);
+      toast.success(`${volunteerName} removed from event`);
+
+      // Refresh volunteers list and event data
+      await Promise.all([fetchVolunteers(), fetchEvent()]);
+    } catch (error) {
+      toast.error(error.message || 'Failed to remove volunteer');
     }
   };
 
@@ -321,6 +368,66 @@ export default function EventDetail() {
               </div>
             )}
           </div>
+
+          {/* Volunteer Management Section - Only for Organizer */}
+          {currentUser && event.organizer === currentUser.id && (
+            <div className="glass rounded-2xl p-6 md:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Users className="w-6 h-6 text-primary-600" />
+                  Registered Volunteers
+                </h2>
+                <Badge variant="primary" size="md">
+                  {volunteers.length} {volunteers.length === 1 ? 'volunteer' : 'volunteers'}
+                </Badge>
+              </div>
+
+              {isLoadingVolunteers ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="shimmer h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : volunteers.length > 0 ? (
+                <div className="space-y-3">
+                  {volunteers.map((volunteer) => (
+                    <div
+                      key={volunteer._id}
+                      className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <User className="w-5 h-5 text-primary-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">{volunteer.name}</p>
+                          <p className="text-sm text-gray-500 flex items-center gap-1 truncate">
+                            <Mail className="w-3 h-3" />
+                            {volunteer.email}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemoveVolunteer(volunteer._id, volunteer.name)}
+                        leftIcon={<UserX className="w-4 h-4" />}
+                        className="flex-shrink-0"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No volunteers have joined yet.</p>
+                  <p className="text-sm mt-1">Share this event to get volunteers!</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tags */}
           {event.tags && event.tags.length > 0 && (

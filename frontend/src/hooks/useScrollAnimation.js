@@ -137,12 +137,27 @@ export function useCountAnimation({
     const { ref, isVisible } = useScrollAnimation();
 
     useEffect(() => {
+        // Reset hasStarted when end value changes to allow re-animation
+        if (typeof end === 'number' && !isNaN(end)) {
+            setHasStarted(false);
+        }
+    }, [end]);
+
+    useEffect(() => {
         if (!isVisible || hasStarted) return;
+
+        // Validate end value - must be a number
+        const endValue = typeof end === 'number' && !isNaN(end) ? end : 0;
+
+        // If end value is invalid, just set count to 0 immediately and wait
+        if (typeof end !== 'number' || isNaN(end)) {
+            setCount(0);
+            return; // Don't set hasStarted yet, wait for valid value
+        }
 
         setHasStarted(true);
 
         const startTime = Date.now() + delay;
-        const endValue = end;
         const range = endValue - start;
 
         const animate = () => {

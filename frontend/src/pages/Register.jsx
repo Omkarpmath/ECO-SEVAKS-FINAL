@@ -112,7 +112,6 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
 
@@ -124,30 +123,14 @@ export default function Register() {
       return;
     }
 
-
-
     setIsLoading(true);
     try {
-      await register(name, email, password, role);
+      // All users are registered with 'user' role
+      await register(name, email, password, 'user');
     } finally {
       setIsLoading(false);
     }
   };
-
-  const roles = [
-    {
-      value: 'user',
-      icon: User,
-      title: 'Volunteer',
-      description: 'Join and participate in events',
-    },
-    {
-      value: 'organizer',
-      icon: Users,
-      title: 'Organizer',
-      description: 'Create and manage events',
-    },
-  ];
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
@@ -166,7 +149,7 @@ export default function Register() {
             </div>
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Eco Sevaks</h1>
-          <p className="text-gray-600">Create your account and start making a difference</p>
+          <p className="text-gray-600">Create your account to join events and make a difference</p>
         </div>
 
         {/* Register Card */}
@@ -202,21 +185,11 @@ export default function Register() {
               required
             />
 
-            {/* Role Selection */}
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                I want to
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {roles.map((r) => (
-                  <RoleCard
-                    key={r.value}
-                    {...r}
-                    isSelected={role === r.value}
-                    onClick={() => setRole(r.value)}
-                  />
-                ))}
-              </div>
+            {/* Info message about user permissions */}
+            <div className="p-3 bg-primary-50 border border-primary-200 rounded-xl">
+              <p className="text-sm text-primary-700">
+                ✨ As a member, you can join events as a volunteer and create your own events!
+              </p>
             </div>
 
             {/* Submit Button */}

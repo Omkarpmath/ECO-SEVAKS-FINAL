@@ -10,7 +10,9 @@ const {
     updateEventStatus,
     addAttendee,
     removeAttendee,
-    deleteEvent
+    deleteEvent,
+    findEventVolunteers,
+    toggleEventRestriction
 } = require('../collections/events');
 const {
     addCreatedEvent,
@@ -45,6 +47,11 @@ const transformEvent = (event) => ({
 // @access  Public
 router.get('/', async (req, res) => {
     try {
+        // Add cache-control headers to prevent stale data
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         const events = await findApprovedEvents();
         const transformedEvents = events.map(transformEvent);
         res.json(transformedEvents);
@@ -59,6 +66,11 @@ router.get('/', async (req, res) => {
 // @access  Private/Admin
 router.get('/pending', protect, authorize('admin'), async (req, res) => {
     try {
+        // Add cache-control headers to prevent stale data
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
         const events = await findPendingEvents();
         const transformedEvents = events.map(transformEvent);
         res.json(transformedEvents);
@@ -331,6 +343,93 @@ router.delete('/:id', protect, async (req, res) => {
         await deleteEvent(req.params.id);
 
         res.json({ message: 'Event deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   GET /api/events/:id/volunteers
+// @desc    Get volunteers list for an event (organizer or admin only)
+// @access  Private
+router.get('/:id/volunteers', protect, async (req, res) => {
+    try {
+        const event = await findEventById(req.params.id);
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // Check if user is the organizer or an admin
+        const isOrganizer = event.organizer.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isOrganizer && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to view volunteers' });
+        }
+
+        const volunteers = await findEventVolunteers(req.params.id);
+
+        res.json(volunteers);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   DELETE /api/events/:id/volunteers/:userId
+// @desc    Remove a volunteer from event (organizer or admin only)
+// @access  Private
+router.delete('/:id/volunteers/:userId', protect, async (req, res) => {
+    try {
+        const event = await findEventById(req.params.id);
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        // Check if user is the organizer or an admin
+        const isOrganizer = event.organizer.toString() === req.user._id.toString();
+        const isAdmin = req.user.role === 'admin';
+
+        if (!isOrganizer && !isAdmin) {
+            return res.status(403).json({ message: 'Not authorized to remove volunteers' });
+        }
+
+        // Remove user from event attendees
+        await removeAttendee(req.params.id, req.params.userId);
+
+        // Remove event from user's joined events
+        await removeJoinedEvent(req.params.userId, req.params.id);
+
+        res.json({ message: 'Volunteer removed successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @route   PUT /api/events/:id/restrict
+// @desc    Toggle event restriction status (admin only)
+// @access  Private/Admin
+router.put('/:id/restrict', protect, authorize('admin'), async (req, res) => {
+    try {
+        const { isRestricted } = req.body;
+
+        await toggleEventRestriction(req.params.id, isRestricted);
+        const event = await findEventById(req.params.id);
+
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+
+        res.json({
+            id: event._id,
+            _id: event._id,
+            title: event.title,
+            status: event.status,
+            message: `Event ${isRestricted ? 'restricted' : 'unrestricted'} successfully`
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

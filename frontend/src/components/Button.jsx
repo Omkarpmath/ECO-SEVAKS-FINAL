@@ -120,11 +120,6 @@ export default function Button({
       `}
             {...props}
         >
-            {/* Loading spinner */}
-            {loading && (
-                <Loader2 className="w-5 h-5 animate-spin" />
-            )}
-
             {/* Left icon */}
             {!loading && leftIcon && (
                 <span className="flex-shrink-0">{leftIcon}</span>
@@ -134,6 +129,8 @@ export default function Button({
             <span className={loading ? 'opacity-0' : ''}>
                 {children}
             </span>
+
+            {/* Loading spinner - absolute positioned to prevent layout shift */}
             {loading && (
                 <span className="absolute inset-0 flex items-center justify-center">
                     <Loader2 className="w-5 h-5 animate-spin" />

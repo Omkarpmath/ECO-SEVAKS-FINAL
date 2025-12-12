@@ -252,25 +252,115 @@ const PendingEventCard = ({ event, onApprove, onReject, onPreview, isProcessing 
 );
 
 // ============================================
+// APPROVED EVENT CARD
+// ============================================
+const ApprovedEventCard = ({ event, onRestrict, onDelete, isProcessing }) => {
+  const isRestricted = event.status === 'restricted';
+
+  return (
+    <div className="glass rounded-xl p-6 hover:shadow-lg transition-all duration-300 animate-fade-in-up">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Image */}
+        <div className="w-full md:w-32 h-32 rounded-xl overflow-hidden flex-shrink-0">
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = `https://placehold.co/200x200/059669/white?text=${encodeURIComponent(event.title.charAt(0))}`;
+              e.target.onerror = null;
+            }}
+          />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <h3 className="text-lg font-bold text-gray-900 truncate">{event.title}</h3>
+            {isRestricted ? (
+              <Badge variant="danger" showDot>Restricted</Badge>
+            ) : (
+              <Badge variant="success" showDot>Approved</Badge>
+            )}
+          </div>
+
+          <p className="text-sm text-gray-500 mb-3">
+            by <span className="font-medium text-gray-700">{event.organizerName}</span>
+          </p>
+
+          <p className="text-gray-600 text-sm line-clamp-2 mb-4">
+            {event.description}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
+              {new Date(event.date).toLocaleDateString()}
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" />
+              {event.type === 'virtual' ? 'Virtual' : event.location}
+            </span>
+            <span className="flex items-center gap-1">
+              <User className="w-4 h-4" />
+              {event.volunteerCount || 0} volunteers
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex md:flex-col gap-2 flex-shrink-0">
+          <Button
+            variant={isRestricted ? "success" : "danger"}
+            size="sm"
+            onClick={() => onRestrict(event.id, !isRestricted)}
+            disabled={isProcessing}
+            leftIcon={isRestricted ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+          >
+            {isRestricted ? 'Unrestrict' : 'Restrict'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(event.id)}
+            disabled={isProcessing}
+            leftIcon={<XCircle className="w-4 h-4" />}
+          >
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // MAIN ADMIN PANEL COMPONENT
 // ============================================
 export default function AdminPanel() {
   const [pendingEvents, setPendingEvents] = useState([]);
+  const [approvedEvents, setApprovedEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'approved'
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewEvent, setPreviewEvent] = useState(null);
 
+  const fetchEvents = async () => {
+    setIsLoading(true);
+    try {
+      const [pending, all] = await Promise.all([
+        api.apiGetPendingEvents(),
+        api.apiGetAllApprovedEvents()
+      ]);
+      setPendingEvents(pending);
+      setApprovedEvents(all);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchPendingEvents = async () => {
-      setIsLoading(true);
-      try {
-        const events = await api.apiGetPendingEvents();
-        setPendingEvents(events);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchPendingEvents();
+    fetchEvents();
   }, []);
 
   const handleApproval = async (eventId, isApproved) => {
@@ -278,10 +368,44 @@ export default function AdminPanel() {
     try {
       await api.apiHandleApproval(eventId, isApproved);
       toast.success(`Event ${isApproved ? 'approved' : 'rejected'} successfully!`);
-      setPendingEvents(prev => prev.filter(event => event.id !== eventId));
+
+      // Refresh data
+      await fetchEvents();
       setPreviewEvent(null);
     } catch (error) {
       toast.error(error.message || 'Failed to update event');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRestrict = async (eventId, isRestricted) => {
+    setIsProcessing(true);
+    try {
+      await api.apiRestrictEvent(eventId, isRestricted);
+      toast.success(`Event ${isRestricted ? 'restricted' : 'unrestricted'} successfully!`);
+
+      // Refresh data
+      await fetchEvents();
+    } catch (error) {
+      toast.error(error.message || 'Failed to restrict event');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (eventId) => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+
+    setIsProcessing(true);
+    try {
+      await api.apiDeleteEvent(eventId);
+      toast.success('Event deleted successfully!');
+
+      // Refresh data
+      await fetchEvents();
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete event');
     } finally {
       setIsProcessing(false);
     }
@@ -310,62 +434,132 @@ export default function AdminPanel() {
         />
         <StatCard
           icon={CheckCircle}
-          value={0}
-          label="Approved Today"
+          value={approvedEvents.length}
+          label="Approved Events"
           color="success"
         />
         <StatCard
           icon={XCircle}
-          value={0}
-          label="Rejected Today"
+          value={approvedEvents.filter(e => e.status === 'restricted').length}
+          label="Restricted"
           color="danger"
         />
         <StatCard
           icon={Calendar}
-          value={0}
+          value={pendingEvents.length + approvedEvents.length}
           label="Total Events"
           color="primary"
         />
       </div>
 
-      {/* Pending Events Section */}
-      <section>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Pending Events</h2>
-          {pendingEvents.length > 0 && (
-            <Badge variant="warning" glow>
-              {pendingEvents.length} awaiting review
-            </Badge>
-          )}
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`
+            px-6 py-3 font-semibold transition-all duration-200
+            border-b-2 
+            ${activeTab === 'pending'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+            }
+          `}
+        >
+          Pending ({pendingEvents.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('approved')}
+          className={`
+            px-6 py-3 font-semibold transition-all duration-200
+            border-b-2
+            ${activeTab === 'approved'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+            }
+          `}
+        >
+          Approved ({approvedEvents.length})
+        </button>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="shimmer h-40 rounded-xl" />
-            ))}
+      {/* Pending Events Section */}
+      {activeTab === 'pending' && (
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Pending Events</h2>
+            {pendingEvents.length > 0 && (
+              <Badge variant="warning" glow>
+                {pendingEvents.length} awaiting review
+              </Badge>
+            )}
           </div>
-        ) : pendingEvents.length > 0 ? (
-          <div className="space-y-4">
-            {pendingEvents.map((event, index) => (
-              <PendingEventCard
-                key={event.id}
-                event={event}
-                onApprove={(id) => handleApproval(id, true)}
-                onReject={(id) => handleApproval(id, false)}
-                onPreview={setPreviewEvent}
-                isProcessing={isProcessing}
-              />
-            ))}
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="shimmer h-40 rounded-xl" />
+              ))}
+            </div>
+          ) : pendingEvents.length > 0 ? (
+            <div className="space-y-4">
+              {pendingEvents.map((event, index) => (
+                <PendingEventCard
+                  key={event.id}
+                  event={event}
+                  onApprove={(id) => handleApproval(id, true)}
+                  onReject={(id) => handleApproval(id, false)}
+                  onPreview={setPreviewEvent}
+                  isProcessing={isProcessing}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              type="inbox"
+              title="All caught up!"
+              description="There are no pending events to review at the moment."
+            />
+          )}
+        </section>
+      )}
+
+      {/* Approved Events Section */}
+      {activeTab === 'approved' && (
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Approved Events</h2>
+            {approvedEvents.length > 0 && (
+              <Badge variant="success">{approvedEvents.length} events</Badge>
+            )}
           </div>
-        ) : (
-          <EmptyState
-            type="inbox"
-            title="All caught up!"
-            description="There are no pending events to review at the moment."
-          />
-        )}
-      </section>
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="shimmer h-40 rounded-xl" />
+              ))}
+            </div>
+          ) : approvedEvents.length > 0 ? (
+            <div className="space-y-4">
+              {approvedEvents.map((event) => (
+                <ApprovedEventCard
+                  key={event.id}
+                  event={event}
+                  onRestrict={(id, isRestricted) => handleRestrict(id, isRestricted)}
+                  onDelete={handleDelete}
+                  isProcessing={isProcessing}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              type="inbox"
+              title="No approved events"
+              description="Events will appear here once you approve them."
+            />
+          )}
+        </section>
+      )}
 
       {/* Preview Modal */}
       {previewEvent && (

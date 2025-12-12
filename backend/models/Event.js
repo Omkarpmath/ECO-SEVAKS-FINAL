@@ -47,7 +47,7 @@ const eventSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected'],
+        enum: ['pending', 'approved', 'rejected', 'restricted'],
         default: 'pending'
     },
     whatToBring: {

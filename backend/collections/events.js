@@ -139,6 +139,42 @@ const deleteEvent = async (eventId) => {
     return await getDB().collection(COLLECTION).deleteOne({ _id: toObjectId(eventId) });
 };
 
+// Get volunteers list with user details for an event
+const findEventVolunteers = async (eventId) => {
+    const event = await getDB().collection(COLLECTION).aggregate([
+        { $match: { _id: toObjectId(eventId) } },
+        {
+            $lookup: {
+                from: collections.users,
+                localField: 'attendees',
+                foreignField: '_id',
+                as: 'volunteersData'
+            }
+        },
+        {
+            $project: {
+                volunteersData: {
+                    _id: 1,
+                    name: 1,
+                    email: 1,
+                    createdAt: 1
+                }
+            }
+        }
+    ]).toArray();
+
+    return event[0]?.volunteersData || [];
+};
+
+// Toggle event restriction status
+const toggleEventRestriction = async (eventId, isRestricted) => {
+    const newStatus = isRestricted ? 'restricted' : 'approved';
+    return getDB().collection(COLLECTION).updateOne(
+        { _id: toObjectId(eventId) },
+        { $set: { status: newStatus, updatedAt: new Date() } }
+    );
+};
+
 module.exports = {
     createEvent,
     findEventById,
@@ -148,5 +184,7 @@ module.exports = {
     updateEventStatus,
     addAttendee,
     removeAttendee,
-    deleteEvent
+    deleteEvent,
+    findEventVolunteers,
+    toggleEventRestriction
 };

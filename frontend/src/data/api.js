@@ -95,20 +95,24 @@ export const apiGetEventById = async (id) => {
 
 export const apiGetEventsForUser = async (userId) => {
   try {
+    console.log('API: Fetching joined events for user:', userId);
     const response = await api.get(`/events/user/${userId}/joined`);
+    console.log('API: Joined events response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching user events:', error);
+    console.error('API: Error fetching user events:', error.response?.data || error.message);
     return [];
   }
 };
 
 export const apiGetCreatedEvents = async (userId) => {
   try {
+    console.log('API: Fetching created events for user:', userId);
     const response = await api.get(`/events/created/${userId}`);
+    console.log('API: Created events response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching created events:', error);
+    console.error('API: Error fetching created events:', error.response?.data || error.message);
     return [];
   }
 };
@@ -156,5 +160,35 @@ export const apiDeleteEvent = async (eventId) => {
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to delete event');
+  }
+};
+
+// Get volunteers list for an event
+export const apiGetEventVolunteers = async (eventId) => {
+  try {
+    const response = await api.get(`/events/${eventId}/volunteers`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch volunteers');
+  }
+};
+
+// Remove a volunteer from an event
+export const apiRemoveVolunteer = async (eventId, userId) => {
+  try {
+    const response = await api.delete(`/events/${eventId}/volunteers/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to remove volunteer');
+  }
+};
+
+// Toggle event restriction status
+export const apiRestrictEvent = async (eventId, isRestricted) => {
+  try {
+    const response = await api.put(`/events/${eventId}/restrict`, { isRestricted });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to restrict event');
   }
 };

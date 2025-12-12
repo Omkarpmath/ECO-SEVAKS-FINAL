@@ -181,6 +181,7 @@ export function StatusBadge({ status, className = '' }) {
         pending: { variant: 'warning', label: 'Pending', dot: true },
         approved: { variant: 'success', label: 'Approved', dot: true },
         rejected: { variant: 'danger', label: 'Rejected', dot: true },
+        restricted: { variant: 'danger', label: 'Restricted', dot: true },
         draft: { variant: 'gray', label: 'Draft', dot: true },
         published: { variant: 'primary', label: 'Published', dot: true },
         archived: { variant: 'dark', label: 'Archived', dot: false },

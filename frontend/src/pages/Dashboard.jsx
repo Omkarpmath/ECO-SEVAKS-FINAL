@@ -142,24 +142,35 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchUserEvents = async () => {
-      if (!currentUser) return;
+      if (!currentUser || !currentUser.id) {
+        console.log('Dashboard: No current user or user ID');
+        return;
+      }
 
+      console.log('Dashboard: Fetching events for user', currentUser.id);
       setIsLoading(true);
+
       try {
         const joined = await api.apiGetEventsForUser(currentUser.id);
-        setJoinedEvents(joined);
+        console.log('Dashboard: Joined events fetched:', joined);
+        setJoinedEvents(joined || []);
 
-        if (currentUser.role === 'organizer' || currentUser.role === 'admin') {
-          const created = await api.apiGetCreatedEvents(currentUser.id);
-          setCreatedEvents(created);
-        }
+        // All users can create events now (no role restriction)
+        const created = await api.apiGetCreatedEvents(currentUser.id);
+        console.log('Dashboard: Created events fetched:', created);
+        setCreatedEvents(created || []);
+      } catch (error) {
+        console.error('Dashboard: Error fetching events:', error);
+        toast.error('Failed to load events');
+        setJoinedEvents([]);
+        setCreatedEvents([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUserEvents();
-  }, [currentUser]);
+  }, [currentUser?.id]); // Changed dependency to currentUser?.id for better tracking
 
   const handleCancelRsvp = async (eventId) => {
     try {
@@ -185,9 +196,16 @@ export default function Dashboard() {
     return null;
   }
 
-  const isOrganizer = currentUser.role === 'organizer' || currentUser.role === 'admin';
-  const upcomingEvents = joinedEvents.filter(e => new Date(e.date) >= new Date());
-  const pastEvents = joinedEvents.filter(e => new Date(e.date) < new Date());
+  // Filter events by status and date for proper categorization
+  const now = new Date();
+  const upcomingEvents = (joinedEvents || []).filter(e => {
+    const eventDate = new Date(e.date);
+    return eventDate >= now && e.status === 'approved';
+  });
+  const pastEvents = (joinedEvents || []).filter(e => {
+    const eventDate = new Date(e.date);
+    return eventDate < now || e.status === 'restricted';
+  });
 
   return (
     <div className="space-y-8">
@@ -205,7 +223,7 @@ export default function Dashboard() {
               <Leaf className="w-6 h-6 text-white" />
             </div>
             <Badge variant="secondary" className="bg-white/20 text-white border-0">
-              {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'organizer' ? 'Organizer' : 'Volunteer'}
+              {currentUser.role === 'admin' ? 'Admin' : 'Member'}
             </Badge>
           </div>
 
@@ -224,30 +242,28 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in-up">
         <StatCard
           icon={Heart}
-          value={joinedEvents.length}
+          value={isLoading ? '...' : (joinedEvents?.length || 0)}
           label="Events Joined"
           color="primary"
         />
         <StatCard
           icon={Calendar}
-          value={upcomingEvents.length}
+          value={isLoading ? '...' : (upcomingEvents?.length || 0)}
           label="Upcoming"
           color="accent"
         />
         <StatCard
           icon={Clock}
-          value={pastEvents.length}
+          value={isLoading ? '...' : (pastEvents?.length || 0)}
           label="Completed"
           color="emerald"
         />
-        {isOrganizer && (
-          <StatCard
-            icon={Users}
-            value={createdEvents.length}
-            label="Events Created"
-            color="secondary"
-          />
-        )}
+        <StatCard
+          icon={Users}
+          value={isLoading ? '...' : (createdEvents?.length || 0)}
+          label="Events Created"
+          color="secondary"
+        />
       </div>
 
       {/* ============================================
@@ -259,13 +275,11 @@ export default function Dashboard() {
             Browse Events
           </Button>
         </Link>
-        {isOrganizer && (
-          <Link to="/create-event">
-            <Button variant="primary" leftIcon={<PlusCircle className="w-5 h-5" />}>
-              Create Event
-            </Button>
-          </Link>
-        )}
+        <Link to="/create-event">
+          <Button variant="primary" leftIcon={<PlusCircle className="w-5 h-5" />}>
+            Create Event
+          </Button>
+        </Link>
       </div>
 
       {/* ============================================
@@ -274,7 +288,7 @@ export default function Dashboard() {
       <section className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Your Joined Events</h2>
-          {joinedEvents.length > 0 && (
+          {(joinedEvents?.length || 0) > 0 && (
             <Badge variant="primary">{joinedEvents.length} events</Badge>
           )}
         </div>
@@ -283,9 +297,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
           </div>
-        ) : joinedEvents.length > 0 ? (
+        ) : (joinedEvents?.length || 0) > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {joinedEvents.map((event, index) => (
+            {(joinedEvents || []).map((event, index) => (
               <EventCard
                 key={event.id}
                 event={event}
@@ -304,41 +318,39 @@ export default function Dashboard() {
       </section>
 
       {/* ============================================
-          CREATED EVENTS SECTION (For Organizers)
+          CREATED EVENTS SECTION
           ============================================ */}
-      {isOrganizer && (
-        <section className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Your Created Events</h2>
-            {createdEvents.length > 0 && (
-              <Badge variant="secondary">{createdEvents.length} events</Badge>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
-            </div>
-          ) : createdEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {createdEvents.map(event => (
-                <CreatedEventCard
-                  key={event.id}
-                  event={event}
-                  onClick={() => navigate(`/event/${event.id}`)}
-                  onDelete={handleDeleteEvent}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              type="created"
-              actionText="Create Event"
-              onAction={() => navigate('/create-event')}
-            />
+      <section className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Your Created Events</h2>
+          {(createdEvents?.length || 0) > 0 && (
+            <Badge variant="secondary">{createdEvents.length} events</Badge>
           )}
-        </section>
-      )}
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(3)].map((_, i) => <CardSkeleton key={i} />)}
+          </div>
+        ) : (createdEvents?.length || 0) > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(createdEvents || []).map(event => (
+              <CreatedEventCard
+                key={event.id}
+                event={event}
+                onClick={() => navigate(`/event/${event.id}`)}
+                onDelete={handleDeleteEvent}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            type="created"
+            actionText="Create Event"
+            onAction={() => navigate('/create-event')}
+          />
+        )}
+      </section>
     </div>
   );
 }

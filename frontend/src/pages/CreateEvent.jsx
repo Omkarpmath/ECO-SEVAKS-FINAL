@@ -44,6 +44,7 @@ export default function CreateEvent() {
     date: '',
     type: 'virtual',
     location: '',
+    imageUrl: '',
     tags: '',
     maxVolunteers: 0,
     whatToBring: '',
@@ -145,6 +146,33 @@ export default function CreateEvent() {
             required
             helperText="Describe what volunteers will be doing and why it matters"
           />
+
+          {/* Event Image URL */}
+          <div>
+            <Input
+              label="Event Image URL (Optional)"
+              name="imageUrl"
+              type="url"
+              value={formData.imageUrl}
+              onChange={handleChange}
+              leftIcon={<Image className="w-5 h-5" />}
+              helperText="Paste an image URL (e.g., from Unsplash, Imgur, etc.)"
+            />
+            {/* Image Preview */}
+            {formData.imageUrl && (
+              <div className="mt-3 rounded-xl overflow-hidden border-2 border-gray-200 animate-fade-in">
+                <img
+                  src={formData.imageUrl}
+                  alt="Event preview"
+                  className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    e.target.src = 'https://placehold.co/600x300/059669/white?text=Invalid+Image+URL';
+                    e.target.classList.add('opacity-50');
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Date & Time + Event Type Row */}
           <div className="grid md:grid-cols-2 gap-6">

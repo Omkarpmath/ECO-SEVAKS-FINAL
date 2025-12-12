@@ -38,10 +38,12 @@ const Input = forwardRef(({
 }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [hasValue, setHasValue] = useState(!!props.value || !!props.defaultValue);
 
     const isPassword = type === 'password';
     const inputType = isPassword && showPassword ? 'text' : type;
+
+    // Check if input has value - use props.value directly for controlled inputs
+    const hasValue = props.value !== undefined ? !!props.value && props.value !== '' : false;
 
     // Determine the current state for styling
     const state = error ? 'error' : success ? 'success' : isFocused ? 'focus' : 'default';
@@ -71,7 +73,6 @@ const Input = forwardRef(({
     };
 
     const handleChange = (e) => {
-        setHasValue(!!e.target.value);
         props.onChange?.(e);
     };
 
@@ -224,7 +225,9 @@ export const Textarea = forwardRef(({
     ...props
 }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
-    const [hasValue, setHasValue] = useState(!!props.value || !!props.defaultValue);
+
+    // Check if textarea has value - use props.value directly for controlled inputs
+    const hasValue = props.value !== undefined ? !!props.value && props.value !== '' : false;
 
     const state = error ? 'error' : success ? 'success' : isFocused ? 'focus' : 'default';
 
@@ -244,7 +247,7 @@ export const Textarea = forwardRef(({
                     disabled={disabled}
                     onFocus={(e) => { setIsFocused(true); props.onFocus?.(e); }}
                     onBlur={(e) => { setIsFocused(false); props.onBlur?.(e); }}
-                    onChange={(e) => { setHasValue(!!e.target.value); props.onChange?.(e); }}
+                    onChange={props.onChange}
                     className={`
             w-full
             px-4 py-4
