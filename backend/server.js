@@ -32,6 +32,7 @@ app.set('trust proxy', 1);
 app.use(cors({
     origin: [
         'http://localhost:5173',
+        'http://localhost:5174',
         'http://localhost:3000',
         'https://eco-sevaks-frontend.onrender.com',
         process.env.FRONTEND_URL

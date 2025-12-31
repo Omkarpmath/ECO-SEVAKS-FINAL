@@ -6,6 +6,7 @@ const {
     findEventById,
     findApprovedEvents,
     findPendingEvents,
+    findRestrictedEvents,
     findEventsByOrganizer,
     updateEventStatus,
     addAttendee,
@@ -39,7 +40,9 @@ const transformEvent = (event) => ({
     status: event.status,
     whatToBring: event.whatToBring,
     maxVolunteers: event.maxVolunteers,
-    volunteerCount: event.attendees ? event.attendees.length : 0
+    volunteerCount: event.attendees ? event.attendees.length : 0,
+    adminReason: event.adminReason || '',
+    adminActionDate: event.adminActionDate || null
 });
 
 // @route   GET /api/events
@@ -79,6 +82,29 @@ router.get('/pending', protect, authorize('admin'), async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// @route   GET /api/events/restricted
+// @desc    Get all restricted events (for admin management)
+// @access  Private/Admin
+router.get('/restricted', protect, authorize('admin'), async (req, res) => {
+    try {
+        console.log('🚫 Fetching restricted events...');
+        // Add cache-control headers to prevent stale data
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
+        const events = await findRestrictedEvents();
+        console.log('✅ Found restricted events:', events.length);
+        const transformedEvents = events.map(transformEvent);
+        res.json(transformedEvents);
+    } catch (error) {
+        console.error('❌ Error:', error.message);
+        console.error('Stack:', error.stack);
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 
 // @route   GET /api/events/:id
 // @desc    Get event by ID
@@ -414,9 +440,9 @@ router.delete('/:id/volunteers/:userId', protect, async (req, res) => {
 // @access  Private/Admin
 router.put('/:id/restrict', protect, authorize('admin'), async (req, res) => {
     try {
-        const { isRestricted } = req.body;
+        const { isRestricted, reason } = req.body;
 
-        await toggleEventRestriction(req.params.id, isRestricted);
+        await toggleEventRestriction(req.params.id, isRestricted, reason || '');
         const event = await findEventById(req.params.id);
 
         if (!event) {
@@ -428,6 +454,7 @@ router.put('/:id/restrict', protect, authorize('admin'), async (req, res) => {
             _id: event._id,
             title: event.title,
             status: event.status,
+            adminReason: event.adminReason || '',
             message: `Event ${isRestricted ? 'restricted' : 'unrestricted'} successfully`
         });
     } catch (error) {

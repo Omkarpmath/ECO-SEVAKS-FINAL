@@ -90,6 +90,31 @@ const findPendingEvents = async () => {
     ]).toArray();
 };
 
+const findRestrictedEvents = async () => {
+    return await getDB().collection(COLLECTION).aggregate([
+        { $match: { status: 'restricted' } },
+        {
+            $lookup: {
+                from: collections.users,
+                localField: 'organizer',
+                foreignField: '_id',
+                as: 'organizerData'
+            }
+        },
+        {
+            $lookup: {
+                from: collections.users,
+                localField: 'attendees',
+                foreignField: '_id',
+                as: 'attendeesData'
+            }
+        },
+        { $unwind: { path: '$organizerData', preserveNullAndEmptyArrays: true } },
+        { $sort: { date: 1 } }
+    ]).toArray();
+};
+
+
 const findEventsByOrganizer = async (organizerId) => {
     return await getDB().collection(COLLECTION).aggregate([
         { $match: { organizer: toObjectId(organizerId) } },
@@ -166,12 +191,26 @@ const findEventVolunteers = async (eventId) => {
     return event[0]?.volunteersData || [];
 };
 
-// Toggle event restriction status
-const toggleEventRestriction = async (eventId, isRestricted) => {
+// Toggle event restriction status with admin reason
+const toggleEventRestriction = async (eventId, isRestricted, reason = '') => {
     const newStatus = isRestricted ? 'restricted' : 'approved';
+    const updateData = {
+        status: newStatus,
+        updatedAt: new Date()
+    };
+
+    if (isRestricted && reason) {
+        updateData.adminReason = reason;
+        updateData.adminActionDate = new Date();
+    } else if (!isRestricted) {
+        // Clear reason when unrestricting
+        updateData.adminReason = '';
+        updateData.adminActionDate = null;
+    }
+
     return getDB().collection(COLLECTION).updateOne(
         { _id: toObjectId(eventId) },
-        { $set: { status: newStatus, updatedAt: new Date() } }
+        { $set: updateData }
     );
 };
 
@@ -180,6 +219,7 @@ module.exports = {
     findEventById,
     findApprovedEvents,
     findPendingEvents,
+    findRestrictedEvents,
     findEventsByOrganizer,
     updateEventStatus,
     addAttendee,

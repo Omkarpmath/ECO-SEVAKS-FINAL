@@ -31,7 +31,8 @@ import {
   Clock,
   Eye,
   ChevronRight,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useScrollAnimation, useCountAnimation } from '../hooks/useScrollAnimation';
 
@@ -68,66 +69,88 @@ const StatCard = ({ icon: Icon, value, label, color = 'primary', suffix = '' }) 
 // ============================================
 // CREATED EVENT CARD (Compact)
 // ============================================
-const CreatedEventCard = ({ event, onClick, onDelete }) => (
-  <div
-    className="
-      glass rounded-xl p-5
-      hover:shadow-lg
-      transition-all duration-300
-    "
-  >
-    <div className="flex items-start justify-between mb-3">
-      <h3 className="font-semibold text-gray-900 line-clamp-1">{event.title}</h3>
-      <StatusBadge status={event.status} />
-    </div>
+const CreatedEventCard = ({ event, onClick, onDelete }) => {
+  const isRestricted = event.status === 'restricted';
 
-    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-      <span className="flex items-center gap-1">
-        <Calendar className="w-4 h-4" />
-        {new Date(event.date).toLocaleDateString()}
-      </span>
-      <span className="flex items-center gap-1">
-        <Users className="w-4 h-4" />
-        {event.attendees?.length || 0} attendees
-      </span>
-    </div>
+  return (
+    <div
+      className="
+        glass rounded-xl p-5
+        hover:shadow-lg
+        transition-all duration-300
+      "
+    >
+      <div className="flex items-start justify-between mb-3">
+        <h3 className="font-semibold text-gray-900 line-clamp-1">{event.title}</h3>
+        <StatusBadge status={event.status} />
+      </div>
 
-    <div className="flex gap-2">
-      <button
-        onClick={onClick}
-        className="
-          flex-1 flex items-center justify-center gap-2
-          py-2.5 px-4
-          bg-gray-100 hover:bg-gray-200
-          text-gray-700 font-medium
-          rounded-lg
-          transition-colors duration-300
-        "
-      >
-        <Eye className="w-4 h-4" />
-        View
-      </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
-            onDelete(event.id);
-          }
-        }}
-        className="
-          flex items-center justify-center gap-2
-          py-2.5 px-4
-          bg-red-100 hover:bg-red-200
-          text-red-600 font-medium
-          rounded-lg
-          transition-colors duration-300
-        "
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      {/* Admin Reason Alert for Restricted Events */}
+      {isRestricted && event.adminReason && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Restriction Reason</p>
+              <p className="text-sm text-red-600 mt-1">{event.adminReason}</p>
+              {event.adminActionDate && (
+                <p className="text-xs text-red-400 mt-1">
+                  {new Date(event.adminActionDate).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+        <span className="flex items-center gap-1">
+          <Calendar className="w-4 h-4" />
+          {new Date(event.date).toLocaleDateString()}
+        </span>
+        <span className="flex items-center gap-1">
+          <Users className="w-4 h-4" />
+          {event.attendees?.length || 0} attendees
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onClick}
+          className="
+            flex-1 flex items-center justify-center gap-2
+            py-2.5 px-4
+            bg-gray-100 hover:bg-gray-200
+            text-gray-700 font-medium
+            rounded-lg
+            transition-colors duration-300
+          "
+        >
+          <Eye className="w-4 h-4" />
+          View
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
+              onDelete(event.id);
+            }
+          }}
+          className="
+            flex items-center justify-center gap-2
+            py-2.5 px-4
+            bg-red-100 hover:bg-red-200
+            text-red-600 font-medium
+            rounded-lg
+            transition-colors duration-300
+          "
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ============================================
 // MAIN DASHBOARD COMPONENT

@@ -83,6 +83,17 @@ export const apiGetPendingEvents = async () => {
   }
 };
 
+export const apiGetRestrictedEvents = async () => {
+  try {
+    const response = await api.get('/events/restricted');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching restricted events:', error);
+    return [];
+  }
+};
+
+
 export const apiGetEventById = async (id) => {
   try {
     const response = await api.get(`/events/${id}`);
@@ -154,9 +165,10 @@ export const apiHandleApproval = async (eventId, isApproved) => {
   }
 };
 
-export const apiDeleteEvent = async (eventId) => {
+// Delete event with optional reason
+export const apiDeleteEvent = async (eventId, reason = '') => {
   try {
-    const response = await api.delete(`/events/${eventId}`);
+    const response = await api.delete(`/events/${eventId}`, { data: { reason } });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to delete event');
@@ -183,10 +195,10 @@ export const apiRemoveVolunteer = async (eventId, userId) => {
   }
 };
 
-// Toggle event restriction status
-export const apiRestrictEvent = async (eventId, isRestricted) => {
+// Toggle event restriction status with reason
+export const apiRestrictEvent = async (eventId, isRestricted, reason = '') => {
   try {
-    const response = await api.put(`/events/${eventId}/restrict`, { isRestricted });
+    const response = await api.put(`/events/${eventId}/restrict`, { isRestricted, reason });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to restrict event');

@@ -63,6 +63,99 @@ const StatCard = ({ icon: Icon, value, label, color = 'primary' }) => {
 };
 
 // ============================================
+// REASON MODAL COMPONENT (For Restrict/Delete)
+// ============================================
+const ReasonModal = ({ isOpen, onClose, onConfirm, action, eventTitle, isProcessing }) => {
+  const [reason, setReason] = useState('');
+
+  if (!isOpen) return null;
+
+  const isRestrict = action === 'restrict';
+  const actionLabel = isRestrict ? 'Restrict' : 'Delete';
+  const actionColor = isRestrict ? 'warning' : 'danger';
+
+  const handleConfirm = () => {
+    onConfirm(reason);
+    setReason('');
+  };
+
+  const handleClose = () => {
+    setReason('');
+    onClose();
+  };
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`p-3 rounded-xl ${isRestrict ? 'bg-amber-100' : 'bg-red-100'}`}>
+            {isRestrict ? (
+              <AlertTriangle className={`w-6 h-6 ${isRestrict ? 'text-amber-600' : 'text-red-600'}`} />
+            ) : (
+              <XCircle className="w-6 h-6 text-red-600" />
+            )}
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">{actionLabel} Event</h3>
+            <p className="text-sm text-gray-500 truncate max-w-[250px]">{eventTitle}</p>
+          </div>
+        </div>
+
+        {/* Reason Input */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Reason for {action}ing <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder={`Enter reason why this event is being ${action}ed...`}
+            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200 transition-all resize-none"
+            rows={3}
+            autoFocus
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            This reason will be shown to the event organizer.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            fullWidth
+            onClick={handleClose}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={actionColor}
+            fullWidth
+            onClick={handleConfirm}
+            loading={isProcessing}
+            disabled={!reason.trim()}
+            leftIcon={isRestrict ? <AlertTriangle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          >
+            {actionLabel} Event
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+};
+
+// ============================================
 // EVENT PREVIEW MODAL (Premium Redesign)
 // ============================================
 const EventPreviewModal = ({ event, onClose, onApprove, onReject, isProcessing }) => {
@@ -348,7 +441,7 @@ const PendingEventCard = ({ event, onApprove, onReject, onPreview, isProcessing 
 // ============================================
 // APPROVED EVENT CARD
 // ============================================
-const ApprovedEventCard = ({ event, onRestrict, onDelete, isProcessing }) => {
+const ApprovedEventCard = ({ event, onRestrict, onUnrestrict, onDelete, isProcessing }) => {
   const isRestricted = event.status === 'restricted';
 
   return (
@@ -386,6 +479,24 @@ const ApprovedEventCard = ({ event, onRestrict, onDelete, isProcessing }) => {
             {event.description}
           </p>
 
+          {/* Admin Reason (if restricted) */}
+          {isRestricted && event.adminReason && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Restriction Reason</p>
+                  <p className="text-sm text-red-600 mt-1">{event.adminReason}</p>
+                  {event.adminActionDate && (
+                    <p className="text-xs text-red-400 mt-1">
+                      Restricted on {new Date(event.adminActionDate).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
@@ -404,19 +515,31 @@ const ApprovedEventCard = ({ event, onRestrict, onDelete, isProcessing }) => {
 
         {/* Actions */}
         <div className="flex md:flex-col gap-2 flex-shrink-0">
-          <Button
-            variant={isRestricted ? "success" : "danger"}
-            size="sm"
-            onClick={() => onRestrict(event.id, !isRestricted)}
-            disabled={isProcessing}
-            leftIcon={isRestricted ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-          >
-            {isRestricted ? 'Unrestrict' : 'Restrict'}
-          </Button>
+          {isRestricted ? (
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => onUnrestrict(event.id)}
+              disabled={isProcessing}
+              leftIcon={<CheckCircle className="w-4 h-4" />}
+            >
+              Unrestrict
+            </Button>
+          ) : (
+            <Button
+              variant="warning"
+              size="sm"
+              onClick={() => onRestrict(event)}
+              disabled={isProcessing}
+              leftIcon={<AlertTriangle className="w-4 h-4" />}
+            >
+              Restrict
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onDelete(event.id)}
+            onClick={() => onDelete(event)}
             disabled={isProcessing}
             leftIcon={<XCircle className="w-4 h-4" />}
           >
@@ -434,20 +557,31 @@ const ApprovedEventCard = ({ event, onRestrict, onDelete, isProcessing }) => {
 export default function AdminPanel() {
   const [pendingEvents, setPendingEvents] = useState([]);
   const [approvedEvents, setApprovedEvents] = useState([]);
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'approved'
+  const [restrictedEvents, setRestrictedEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'approved', or 'restricted'
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewEvent, setPreviewEvent] = useState(null);
+  const [reasonModal, setReasonModal] = useState({ isOpen: false, action: '', event: null });
 
   const fetchEvents = async () => {
+    console.log('📊 Fetching events...');
     setIsLoading(true);
     try {
-      const [pending, all] = await Promise.all([
+      const [pending, approved, restricted] = await Promise.all([
         api.apiGetPendingEvents(),
-        api.apiGetAllApprovedEvents()
+        api.apiGetAllApprovedEvents(),
+        api.apiGetRestrictedEvents()
       ]);
+      console.log('✅ Fetched:', {
+        pending: pending.length,
+        approved: approved.length,
+        restricted: restricted.length
+      });
+      console.log('🚫 Restricted events:', restricted);
       setPendingEvents(pending);
-      setApprovedEvents(all);
+      setApprovedEvents(approved);
+      setRestrictedEvents(restricted);
     } finally {
       setIsLoading(false);
     }
@@ -473,37 +607,60 @@ export default function AdminPanel() {
     }
   };
 
-  const handleRestrict = async (eventId, isRestricted) => {
+  // Open reason modal for restrict action
+  const openRestrictModal = (event) => {
+    setReasonModal({ isOpen: true, action: 'restrict', event });
+  };
+
+  // Open reason modal for delete action
+  const openDeleteModal = (event) => {
+    setReasonModal({ isOpen: true, action: 'delete', event });
+  };
+
+  // Close reason modal
+  const closeReasonModal = () => {
+    setReasonModal({ isOpen: false, action: '', event: null });
+  };
+
+  // Execute restrict/delete with reason
+  const executeWithReason = async (reason) => {
+    const { action, event } = reasonModal;
+    if (!event) return;
+
     setIsProcessing(true);
     try {
-      await api.apiRestrictEvent(eventId, isRestricted);
-      toast.success(`Event ${isRestricted ? 'restricted' : 'unrestricted'} successfully!`);
+      if (action === 'restrict') {
+        await api.apiRestrictEvent(event.id, true, reason);
+        toast.success('Event restricted successfully!');
+      } else if (action === 'delete') {
+        await api.apiDeleteEvent(event.id, reason);
+        toast.success('Event deleted successfully!');
+      }
 
-      // Refresh data
+      closeReasonModal();
       await fetchEvents();
     } catch (error) {
-      toast.error(error.message || 'Failed to restrict event');
+      console.error('Error:', error);
+      toast.error(error.message || `Failed to ${action} event`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleDelete = async (eventId) => {
-    if (!confirm('Are you sure you want to delete this event?')) return;
-
+  // Handle unrestrict (no reason needed)
+  const handleUnrestrict = async (eventId) => {
     setIsProcessing(true);
     try {
-      await api.apiDeleteEvent(eventId);
-      toast.success('Event deleted successfully!');
-
-      // Refresh data
+      await api.apiRestrictEvent(eventId, false, '');
+      toast.success('Event unrestricted successfully!');
       await fetchEvents();
     } catch (error) {
-      toast.error(error.message || 'Failed to delete event');
+      toast.error(error.message || 'Failed to unrestrict event');
     } finally {
       setIsProcessing(false);
     }
   };
+
 
   return (
     <div className="space-y-8">
@@ -522,25 +679,25 @@ export default function AdminPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-up">
         <StatCard
           icon={Clock}
-          value={pendingEvents.length}
+          value={pendingEvents?.length || 0}
           label="Pending Events"
           color="warning"
         />
         <StatCard
           icon={CheckCircle}
-          value={approvedEvents.length}
+          value={approvedEvents?.length || 0}
           label="Approved Events"
           color="success"
         />
         <StatCard
           icon={XCircle}
-          value={approvedEvents.filter(e => e.status === 'restricted').length}
+          value={restrictedEvents?.length || 0}
           label="Restricted"
           color="danger"
         />
         <StatCard
           icon={Calendar}
-          value={pendingEvents.length + approvedEvents.length}
+          value={(pendingEvents?.length || 0) + (approvedEvents?.length || 0)}
           label="Total Events"
           color="primary"
         />
@@ -559,7 +716,7 @@ export default function AdminPanel() {
             }
           `}
         >
-          Pending ({pendingEvents.length})
+          Pending ({pendingEvents?.length || 0})
         </button>
         <button
           onClick={() => setActiveTab('approved')}
@@ -572,7 +729,20 @@ export default function AdminPanel() {
             }
           `}
         >
-          Approved ({approvedEvents.length})
+          Approved ({approvedEvents?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveTab('restricted')}
+          className={`
+            px-6 py-3 font-semibold transition-all duration-200
+            border-b-2
+            ${activeTab === 'restricted'
+              ? 'border-red-600 text-red-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+            }
+          `}
+        >
+          Restricted ({restrictedEvents?.length || 0})
         </button>
       </div>
 
@@ -581,7 +751,7 @@ export default function AdminPanel() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Pending Events</h2>
-            {pendingEvents.length > 0 && (
+            {(pendingEvents?.length || 0) > 0 && (
               <Badge variant="warning" glow>
                 {pendingEvents.length} awaiting review
               </Badge>
@@ -594,9 +764,9 @@ export default function AdminPanel() {
                 <div key={i} className="shimmer h-40 rounded-xl" />
               ))}
             </div>
-          ) : pendingEvents.length > 0 ? (
+          ) : (pendingEvents?.length || 0) > 0 ? (
             <div className="space-y-4">
-              {pendingEvents.map((event, index) => (
+              {(pendingEvents || []).map((event, index) => (
                 <PendingEventCard
                   key={event.id}
                   event={event}
@@ -622,7 +792,7 @@ export default function AdminPanel() {
         <section>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Approved Events</h2>
-            {approvedEvents.length > 0 && (
+            {(approvedEvents?.length || 0) > 0 && (
               <Badge variant="success">{approvedEvents.length} events</Badge>
             )}
           </div>
@@ -633,14 +803,15 @@ export default function AdminPanel() {
                 <div key={i} className="shimmer h-40 rounded-xl" />
               ))}
             </div>
-          ) : approvedEvents.length > 0 ? (
+          ) : (approvedEvents?.length || 0) > 0 ? (
             <div className="space-y-4">
-              {approvedEvents.map((event) => (
+              {(approvedEvents || []).map((event) => (
                 <ApprovedEventCard
                   key={event.id}
                   event={event}
-                  onRestrict={(id, isRestricted) => handleRestrict(id, isRestricted)}
-                  onDelete={handleDelete}
+                  onRestrict={openRestrictModal}
+                  onUnrestrict={handleUnrestrict}
+                  onDelete={openDeleteModal}
                   isProcessing={isProcessing}
                 />
               ))}
@@ -650,6 +821,45 @@ export default function AdminPanel() {
               type="inbox"
               title="No approved events"
               description="Events will appear here once you approve them."
+            />
+          )}
+        </section>
+      )}
+
+      {/* Restricted Events Section */}
+      {activeTab === 'restricted' && (
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Restricted Events</h2>
+            {(restrictedEvents?.length || 0) > 0 && (
+              <Badge variant="danger">{restrictedEvents.length} restricted</Badge>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="shimmer h-40 rounded-xl" />
+              ))}
+            </div>
+          ) : (restrictedEvents?.length || 0) > 0 ? (
+            <div className="space-y-4">
+              {(restrictedEvents || []).map((event) => (
+                <ApprovedEventCard
+                  key={event.id}
+                  event={event}
+                  onRestrict={openRestrictModal}
+                  onUnrestrict={handleUnrestrict}
+                  onDelete={openDeleteModal}
+                  isProcessing={isProcessing}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              type="inbox"
+              title="No restricted events"
+              description="Restricted events will appear here. These events cannot accept new volunteer registrations."
             />
           )}
         </section>
@@ -665,6 +875,16 @@ export default function AdminPanel() {
           isProcessing={isProcessing}
         />
       )}
+
+      {/* Reason Modal for Restrict/Delete */}
+      <ReasonModal
+        isOpen={reasonModal.isOpen}
+        onClose={closeReasonModal}
+        onConfirm={executeWithReason}
+        action={reasonModal.action}
+        eventTitle={reasonModal.event?.title || ''}
+        isProcessing={isProcessing}
+      />
     </div>
   );
 }
